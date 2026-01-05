@@ -1,0 +1,19 @@
+project:
+  type: book
+  output-dir: docs
+  
+book:
+  title: "Análise de sobrevivência aplicado a dados epidemiológicos"
+  author: "Ana Caroline Alexandre P."
+  date: last-modified
+  chapters:
+    - index.qmd
+    - intro.qmd
+bibliography: references.bib
+format:
+  html:
+    theme:  
+      light: flatly
+      dark: darkly
+    toc-title: "Sumário"
+editor: visual

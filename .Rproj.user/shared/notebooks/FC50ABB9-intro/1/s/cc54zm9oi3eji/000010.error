@@ -1,0 +1,1 @@
+{"frames":[],"message":"Error in survfit(Surv(tempo, status_1) ~ forma_doenca, df_fit) : \n  não foi possível encontrar a função \"survfit\"\n"}

@@ -1,0 +1,78 @@
+
+### Tempo até a cura: comportamento entre gêneros e classificação de casos
+
+Pela tabela gerada pelo pacote 'survival' do R, se pode percerbe que existe uma estabilidade na probabilidade de sobrevivência principalmente no grupo de pessoas com a forma da doença Síndrome Gripal. Quer dizer que há mais demora até um paciente ser curado. No entanto, apesar de haver muitas notificações de casos de Síndrome Gripal, existe poucos eventos em que esses paciente de fato se curaram. 
+
+Para os casos de paciente com Síndrome Respiratória Agúda Grave, houve consideráveis observações de pessoas que se curaram da doença, com probabilidades de não sobrevivência de praticamente 73% no 12 mês do ano de 2023, indicando que apesar das notificações, os pacientes conseguiram se curar. 
+
+Em ambos os grupos, podemos observar que houve muitas notificações, onde ao passar dos meses essa notificações foram oscilando e diminuindo drasticamente, principalmente no grupo de pessoas com SRAG. Isto indica que houve censuras, seja por óbitos devido as doenças, óbitos por outro fatores ou mesmo pela perda de acompanhamento desses paciente. 
+
+
+
+```{r echo=FALSE, warning=FALSE}
+
+library(tidyverse)
+library(janitor)
+library(survival)
+library(ggplot2)
+library(ggfortify)
+library(tidycmprsk)
+
+ekm1 <- survfit(Surv(tempo, status_1) ~ forma_doenca,df_fit)
+summary(ekm1)
+
+s_ekm1 <- survfit(Surv(tempo, status_1) ~ sexo,df_fit)
+```
+
+
+Gráficamente podemos observa melhor a curva de Kaplan-Meier:
+
+```{r echo=FALSE, warning=FALSE}
+
+autoplot(ekm1)+
+  coord_cartesian(ylim = c(0.70, 1)) + # Foca na parte de cima do gráfico
+  scale_x_continuous(breaks = 1:12)+
+  labs(title = "Estimativa de Kaplan-Meier: Comparação entre SG e SRAG (falha=cura)",
+       subtitle = "Acompanhamento de 12 meses (Intervalo de Confiança Log-Log)",
+    y = "Probabilidade de Sobrevivência", 
+    x = "Tempo (mês)",color = NULL,fill=NULL,
+    caption = "Tempo de Falha (Cura)")+
+  theme_bw()+
+  theme(legend.position = "bottom")
+
+
+autoplot(s_ekm1)+
+  coord_cartesian(ylim = c(0.96, 1)) + # Foca na parte de cima do gráfico
+  scale_x_continuous(breaks = 1:12)+
+  labs(title = "Estimativa de Kaplan-Meier: Comparação entre gêneros feminino e masculino",
+       subtitle = "Acompanhamento de 12 meses (Intervalo de Confiança Log-Log)",
+    y = "Probabilidade de Sobrevivência", 
+    x = "Tempo (mês)",color = NULL,fill=NULL,
+    caption = "Tempo de Falha (Cura)")+
+  theme_bw()+
+  theme(legend.position = "bottom")
+```
+
+
+
+```{r echo=FALSE, warning=FALSE}
+ekm_class <- survfit(Surv(tempo, status_1) ~ classificacao,df_fit)
+summary(ekm_class)
+```
+
+
+```{r echo=FALSE, warning=FALSE}
+autoplot(ekm_class)+
+  coord_cartesian(ylim = c(0.85, 1)) + # Foca na parte de cima do gráfico
+  scale_x_continuous(breaks = 1:12)+
+  labs(title = "Estimativa de Kaplan-Meier: Comparação entre a classificação de casos",
+       subtitle = "Acompanhamento de 12 meses (Intervalo de Confiança Log-Log)",
+       y = "Probabilidade de Sobrevivência", x = "Tempo (mês)",color = NULL,fill=NULL,
+       caption = "Tempo de Falha (Cura)")+
+  theme_bw()+
+  theme(legend.position = "bottom")
+
+```
+
+
+

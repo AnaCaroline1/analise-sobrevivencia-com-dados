@@ -1,0 +1,4 @@
+"0","ekm1 <- survfit(Surv(tempo, status_1) ~ forma_doenca,df_fit)"
+"2","Error in survfit(Surv(tempo, status_1) ~ forma_doenca, df_fit) : 
+  não foi possível encontrar a função ""survfit""
+"
