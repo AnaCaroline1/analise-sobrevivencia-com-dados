@@ -418,7 +418,7 @@ Conclusão: p < 0.05, logo se rejeita $H_{0}$, portanto a probabilidade de óbit
 Se confirma agora pelo teste Logrank que a curva de Kaplan-Meier indicou: todos os dados observados que foram tidos como mortes por outras causas são todos os casos que foram descartados.
 
 
-Se pode concluir que o 
+
 
 
 
