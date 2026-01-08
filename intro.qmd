@@ -32,6 +32,18 @@ df <- df |>
   ))
 
 
+# o Quanto essas observações apontam ruído
+# Susteita: censura intervalar. Nesses casos, não se sabe o tempo até os tempos de falha, não o tempo exato.
+# 1. Identificando os casos com classificações diferentes para mesmo indivíduo maior que 1.
+
+pc_evolucao <- df %>%
+  group_by(num_not) %>% 
+  filter(n_distinct(classificacao) > 1) %>% 
+  arrange(num_not) # Organiza para facilitar a leitura
+
+table(pc_evolucao$classificacao,pc_evolucao$forma_doenca,pc_evolucao$dt_notific)
+
+
 df_fit1 <- df |>
   select(-num_not,-dt_notific, -cep, -dt_nasc, -ano)
 
