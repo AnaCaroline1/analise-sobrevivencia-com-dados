@@ -32,27 +32,97 @@ df <- df |>
   ))
 
 
-# o Quanto essas observações apontam ruído
-# Susteita: censura intervalar. Nesses casos, não se sabe o tempo até os tempos de falha, não o tempo exato.
-# 1. Identificando os casos com classificações diferentes para mesmo indivíduo maior que 1.
-
-pc_evolucao <- df %>%
-  group_by(num_not) %>% 
-  filter(n_distinct(classificacao) > 1) %>% 
-  arrange(num_not) # Organiza para facilitar a leitura
-
-table(pc_evolucao$classificacao,pc_evolucao$forma_doenca,pc_evolucao$dt_notific)
 
 
 df_fit1 <- df |>
   select(-num_not,-dt_notific, -cep, -dt_nasc, -ano)
 
+df_fit2  <-  df |> 
+  select(-cep,-dt_nasc,-ano)
+
+df_fit2 <- df_fit2 |>
+  mutate(dt_notific = ymd(dt_notific),
+         dt_sin_pri = ymd(dt_sin_pri))
+
+df_fit3 <- df_fit2 |>
+  filter(dt_notific >= as.Date("2023-01-01") & dt_notific <= as.Date("2023-12-31"),
+         dt_sin_pri >= as.Date("2023-01-01") & dt_sin_pri <= as.Date("2023-12-31"))
+
+# o Quanto essas observações apontam ruído
+# Susteita: censura intervalar. Nesses casos, não se sabe o tempo até os tempos de falha, não o tempo exato.
+# 1. Identificando os casos com classificações diferentes para mesmo indivíduo maior que 1.
+
+pc_evolucao <- df_fit3 |>
+  group_by(num_not) |> 
+  filter(n_distinct(classificacao) > 1) |> 
+  arrange(num_not) # Organiza para facilitar a leitura
+
+table(pc_evolucao$num_not)
+
+resumo_desfecho <- df_fit3 %>%
+  group_by(num_not) %>%
+  summarise(
+    primeira_class = first(classificacao),
+    ultima_class = last(classificacao),
+    teve_mudanca = n_distinct(classificacao) > 1
+  )
+table(resumo_desfecho)
+
+# 1. Criamos a base apenas com o desfecho final dos que mudaram
+pacientes_desfecho_final <- df_fit3 %>%
+  group_by(num_not) %>%
+  # Primeiro, identificamos quem teve mais de uma classificação
+  filter(n_distinct(classificacao) > 1) %>% 
+  # Ordenamos por data para garantir que o desfecho esteja na última linha
+  arrange(dt_notific) %>% 
+  # Pegamos apenas a última linha de cada grupo (o desfecho)
+  slice(1) %>% 
+  ungroup()
+    
+ids_com_mudanca <- df_fit3 %>%
+  group_by(num_not) %>%
+  filter(n_distinct(classificacao) > 1) %>%
+  pull(num_not) %>%
+  unique()
+
+df_fit4 <- df_fit3 |>
+  filter(!(num_not %in% ids_com_mudanca))
+
+pacientes_desfecho_final
+
+datas_dirv <- df_fit4 |>
+  filter(dt_notific < dt_sin_pri  ) |>
+  select(num_not, dt_sin_pri, dt_notific)
+
+datas_dirv# aqui ele aplica um filtro para identificar se existem notificações que antecedem as datas em que houve o primeiro sintoma.
+
+df_fit_f <- bind_rows(df_fit4, pacientes_desfecho_final)
+
+df_fit_f1 <- df_fit_f|>
+  mutate(
+    consis_dt = ifelse(dt_notific < dt_sin_pri, "Notificação Antecipada", "Notificação Normal"),
+    atraso_notific = as.numeric(difftime(dt_notific,dt_sin_pri,units = "days"))
+  )
+table(df_fit_f1$atraso_notific)
+
+colSums(is.na(df_fit_f)) # conta em quais colunas existem na's
+
+
 ```
+Como são 10 observações em que o sintoma é datado após a notificação. Imagino que possa ser que um paciente apresentou um sintoma e depois foi notificado como um caso. Por isso, deixarei marcado essas observações como inconsistência.
 
 ```{r include=FALSE}
 
-df_fit <- na.omit(df_fit1)
-glimpse(df_fit)
+df_fit <- na.omit(df_fit_f)#Remove a linha que possui na
+
+df_fit %>%
+  summarise(
+    preenchidos_data1 = sum(!is.na(dt_notific)),
+    preenchidos_data2 = sum(!is.na(dt_sin_pri))
+  ) # Conta quantas linhas estão preenchidas nas colunas e que não são na
+
+
+
 ```
 
 ```{r include=FALSE}
@@ -65,21 +135,6 @@ df_fit |>
 
 ```
 
-```{r include=FALSE}
-status <- df_fit$evolucao
-
-table(status)
-
-table(df_fit$dt_sin_pri)
-
-tempo <- month(ymd(df_fit$dt_sin_pri))
-
-table(tempo)
-
-df_fit
-
-df
-```
 
 
 ```{r echo=FALSE}
@@ -125,11 +180,15 @@ df_fit <- df_fit |>
     evolucao %in% c("Em investigação","Em monitoramento","Óbito","Cura") ~ 0,
   ))
 
+df_fit <- df_fit|>
+  mutate(dif_tempos = day(dt_notific) - day(dt_sin_pri)        
+         ) 
 ```
 
 Assim o banco de dados estudado fica com 9 variáveis para serem trabalhadas.
 
 ```{r echo=FALSE}
+
 head(df_fit, n=3L)
 ```
 
@@ -161,8 +220,13 @@ Em ambos os grupos, podemos observar que houve muitas notificações, onde ao pa
 
 
 ```{r echo=FALSE, warning=FALSE}
-ekm1 <- survfit(Surv(tempo, status_1) ~ forma_doenca,df_fit)
+ekm1 <- survfit(Surv(dif_tempos, status_1) ~ forma_doenca,df_fit)
 summary(ekm1)
+
+# Verifica quantos NAs existem em cada coluna da análise
+df_fit %>% 
+  select(tempo_not, tempo_sin, status_1, forma_doenca) %>% 
+  summarise(across(everything(), ~sum(is.na(.))))
 
 s_ekm1 <- survfit(Surv(tempo, status_1) ~ sexo,df_fit)
 ```
@@ -173,8 +237,8 @@ Gráficamente podemos observa melhor a curva de Kaplan-Meier:
 ```{r echo=FALSE, warning=FALSE}
 
 autoplot(ekm1)+
-  coord_cartesian(ylim = c(0.70, 1)) + # Foca na parte de cima do gráfico
-  scale_x_continuous(breaks = 1:12)+
+  #coord_cartesian(ylim = c(0.70, 1)) + # Foca na parte de cima do gráfico
+  #scale_x_continuous(breaks = 1:12)+
   labs(title = "Estimativa de Kaplan-Meier: Comparação entre SG e SRAG (falha=cura)",
        subtitle = "Acompanhamento de 12 meses (Intervalo de Confiança Log-Log)",
     y = "Probabilidade de Sobrevivência", 
